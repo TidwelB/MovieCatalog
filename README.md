@@ -1,4 +1,4 @@
-# My Movie Room — v1.5
+# My Movie Room — v1.6.1
 
 A local-first web movie catalog for tracking what you own and exactly where each physical copy is stored.
 
@@ -16,6 +16,13 @@ A local-first web movie catalog for tracking what you own and exactly where each
 - Export/import a JSON backup to transfer your catalog between Windows, macOS, browsers, or computers.
 - Check GitHub for application updates from inside **Settings**.
 - Install updates using a one-click-ish local updater on Windows or macOS; Git and Python are not required on the family member's computer.
+
+
+## v1.6.1 hotfix — update checker freshness
+
+The Settings update checker now reads `version.js` through the GitHub Contents API instead of relying on the `raw.githubusercontent.com` branch URL. This avoids a short-lived CDN/cache condition where GitHub's web UI already showed the new version but the checker still received the previous `version.js`.
+
+The checker still reads only the public `TIDWELB/MovieCatalog` repository and does not require a GitHub account or token.
 
 ## v1.5 changes — updater system
 

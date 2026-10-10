@@ -12,6 +12,7 @@
   const UPDATE_REPO = 'TIDWELB/MovieCatalog';
   const UPDATE_BRANCH = 'main';
   const UPDATE_VERSION_URL = `https://raw.githubusercontent.com/${UPDATE_REPO}/${UPDATE_BRANCH}/version.js`;
+  const UPDATE_CONTENTS_API_URL = `https://api.github.com/repos/${UPDATE_REPO}/contents/version.js`;
   const UPDATE_ARCHIVE_URL = `https://github.com/${UPDATE_REPO}/archive/refs/heads/${UPDATE_BRANCH}.zip`;
 
   let db;
@@ -735,10 +736,31 @@
     status.textContent = 'Checking GitHub…';
 
     try {
-      const separator = UPDATE_VERSION_URL.includes('?') ? '&' : '?';
-      const response = await fetch(`${UPDATE_VERSION_URL}${separator}t=${Date.now()}`, { cache:'no-store' });
-      if (!response.ok) throw new Error(`GitHub returned ${response.status}.`);
-      const text = await response.text();
+      // Use GitHub's Contents API rather than raw.githubusercontent.com.
+      // The raw branch URL can be served through a CDN and may briefly report
+      // the previous version after main has already been updated.
+      const apiUrl = `${UPDATE_CONTENTS_API_URL}?ref=${encodeURIComponent(UPDATE_BRANCH)}&t=${Date.now()}`;
+      const response = await fetch(apiUrl, {
+        cache:'no-store',
+        headers:{ 'Accept':'application/vnd.github+json' }
+      });
+      if (!response.ok) {
+        if (response.status === 403) throw new Error('GitHub API rate limit reached. Try again in a few minutes.');
+        throw new Error(`GitHub returned ${response.status}.`);
+      }
+
+      const payload = await response.json();
+      if (!payload || !payload.content) throw new Error('GitHub did not return version.js content.');
+
+      let text;
+      try {
+        const compactBase64 = String(payload.content).replace(/\s/g, '');
+        const bytes = Uint8Array.from(atob(compactBase64), ch => ch.charCodeAt(0));
+        text = new TextDecoder('utf-8').decode(bytes);
+      } catch {
+        throw new Error('Could not decode the GitHub version.js file.');
+      }
+
       const match = text.match(/MOVIE_CATALOG_VERSION\s*=\s*['"]([^'"]+)['"]/);
       if (!match) throw new Error('The GitHub build does not contain a readable version.js file.');
 
