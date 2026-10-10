@@ -133,7 +133,7 @@
           <div class="update-panel-heading">
             <div>
               <h2>Application updates</h2>
-              <p class="muted">Check the public GitHub repository for a newer MovieCatalog build.</p>
+              <p class="muted">The desktop launcher checks for updates automatically whenever MovieCatalog opens. You can also check manually here.</p>
             </div>
             <span id="installedVersionBadge" class="version-badge">v—</span>
           </div>
@@ -148,11 +148,8 @@
           <p id="updateStatus" class="status muted">Updates replace only the application files. Your movies, shelves, room layout, and TMDB token remain in this browser's IndexedDB storage.</p>
           <div id="updateInstructions" class="update-instructions hidden">
             <strong id="updateHeadline">Update available</strong>
-            <ol>
-              <li>Close this MovieCatalog browser tab/window.</li>
-              <li>In the MovieCatalog folder, double-click <code id="updaterFileName">Update MovieCatalog</code>.</li>
-              <li>The updater downloads the newest <code>main</code> build, installs it, and reopens MovieCatalog.</li>
-            </ol>
+            <p id="launcherInstruction">Close this browser window and reopen MovieCatalog using the launcher.</p>
+            <p class="muted">Launcher: <code id="launcherName">MovieCatalog launcher</code></p>
             <p id="updatePlatformNote" class="muted"></p>
           </div>
         </div>

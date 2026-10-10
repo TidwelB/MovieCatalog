@@ -8,10 +8,9 @@
   const SETTINGS = 'settings';
   const TMDB_API = 'https://api.themoviedb.org/3';
   const TMDB_IMAGE = 'https://image.tmdb.org/t/p/w500';
-  const APP_VERSION = window.MOVIE_CATALOG_VERSION || '1.5.0';
+  const APP_VERSION = window.MOVIE_CATALOG_VERSION || '1.7.0';
   const UPDATE_REPO = 'TIDWELB/MovieCatalog';
   const UPDATE_BRANCH = 'main';
-  const UPDATE_VERSION_URL = `https://raw.githubusercontent.com/${UPDATE_REPO}/${UPDATE_BRANCH}/version.js`;
   const UPDATE_CONTENTS_API_URL = `https://api.github.com/repos/${UPDATE_REPO}/contents/version.js`;
   const UPDATE_ARCHIVE_URL = `https://github.com/${UPDATE_REPO}/archive/refs/heads/${UPDATE_BRANCH}.zip`;
 
@@ -694,32 +693,36 @@
     return 0;
   }
 
-  function detectedUpdater() {
+  function detectedLauncher() {
     const ua = navigator.userAgent || '';
     if (/Macintosh|Mac OS X/i.test(ua)) {
       return {
-        file: 'Update MovieCatalog.command',
-        note: 'On macOS, the updater opens in Terminal. The first time, macOS may require Control-click → Open if it warns about an unsigned local script.'
+        name: 'MovieCatalog.app',
+        instruction: 'Close this browser window, then open MovieCatalog from the desktop again. The launcher checks GitHub and installs the newest build before reopening the catalog.',
+        note: 'The macOS desktop launcher updates the program files stored under your user Library. Git, Python, and a GitHub account are not required.'
       };
     }
     if (/Windows/i.test(ua)) {
       return {
-        file: 'Update MovieCatalog.bat',
-        note: 'On Windows, the updater opens a small command window and uses built-in PowerShell. Git and Python are not required.'
+        name: 'Launch MovieCatalog.bat',
+        instruction: 'Close this browser window, then double-click Launch MovieCatalog.bat. The launcher installs the newest build before reopening the catalog.',
+        note: 'The Windows launcher uses built-in PowerShell. Git and Python are not required.'
       };
     }
     return {
-      file: 'Update MovieCatalog.command (macOS) or Update MovieCatalog.bat (Windows)',
-      note: 'Use the updater that matches the computer running MovieCatalog.'
+      name: 'MovieCatalog launcher',
+      instruction: 'Close this browser window and reopen MovieCatalog using the launcher for this computer. The launcher checks for updates before opening the catalog.',
+      note: 'The manual ZIP download remains available as a fallback.'
     };
   }
 
   function initializeUpdatePanel() {
-    const updater = detectedUpdater();
+    const launcher = detectedLauncher();
     $('installedVersion').textContent = `v${APP_VERSION}`;
     $('installedVersionBadge').textContent = `v${APP_VERSION}`;
-    $('updaterFileName').textContent = updater.file;
-    $('updatePlatformNote').textContent = updater.note;
+    $('launcherName').textContent = launcher.name;
+    $('launcherInstruction').textContent = launcher.instruction;
+    $('updatePlatformNote').textContent = launcher.note;
     $('downloadLatestBtn').href = UPDATE_ARCHIVE_URL;
   }
 

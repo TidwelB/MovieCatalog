@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="color-scheme" content="dark light" />
+  <title>My Movie Room</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>My Movie Room</h1>
+      <p class="subtitle">Catalog what you own and exactly where it lives.</p>
+    </div>
+    <nav class="tabs" aria-label="Primary navigation">
+      <button class="tab active" data-view="catalog">Catalog</button>
+      <button class="tab" data-view="search">Add Movies</button>
+      <button class="tab" data-view="room">Room Map</button>
+      <button class="tab" data-view="storage">Cases & Shelves</button>
+      <button class="tab" data-view="settings">Settings</button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="view-catalog" class="view active-view">
+      <div class="section-heading">
+        <div>
+          <h2>Catalog</h2>
+          <p id="catalogSummary" class="muted"></p>
+        </div>
+        <div class="toolbar wrap">
+          <input id="catalogSearch" type="search" placeholder="Filter title, year, notes…" />
+          <select id="catalogCaseFilter"><option value="">All cases</option></select>
+          <select id="catalogFormatFilter"><option value="">All formats</option></select>
+          <select id="catalogSort">
+            <option value="title">Title</option>
+            <option value="year-desc">Newest release</option>
+            <option value="added-desc">Recently added</option>
+            <option value="location">Physical location</option>
+          </select>
+        </div>
+      </div>
+      <div id="catalogGrid" class="movie-grid"></div>
+      <div id="catalogEmpty" class="empty-state hidden">
+        <h3>Your catalog is empty</h3>
+        <p>Search the public movie database and add your first title.</p>
+        <button data-go="search" class="primary">Add a movie</button>
+      </div>
+    </section>
+
+    <section id="view-search" class="view">
+      <div class="section-heading">
+        <div>
+          <h2>Add Movies</h2>
+          <p class="muted">Search The Movie Database (TMDB), then add a title to your local catalog.</p>
+        </div>
+      </div>
+      <form id="movieSearchForm" class="search-row">
+        <div class="search-input-wrap">
+          <input id="movieSearchInput" type="search" placeholder="Search movie title…" autocomplete="off" required aria-autocomplete="list" aria-controls="movieSearchSuggestions" aria-expanded="false" />
+          <button id="searchClearBtn" class="search-clear hidden" type="button" aria-label="Clear movie search" title="Clear search">×</button>
+          <div id="movieSearchSuggestions" class="search-suggestions hidden" role="listbox" aria-label="Movie suggestions"></div>
+        </div>
+        <button class="primary" type="submit">Search TMDB</button>
+        <button id="manualMovieBtn" class="secondary" type="button">+ Manual entry</button>
+      </form>
+      <div id="searchStatus" class="status muted">TMDB search is optional. Manual entry works without a token or internet connection.</div>
+      <div id="searchResults" class="movie-grid search-grid"></div>
+    </section>
+
+    <section id="view-room" class="view">
+      <div class="section-heading">
+        <div>
+          <h2>Room Map</h2>
+          <p class="muted">Drag bookcases to match your room. Hover for inventory; click to inspect a case.</p>
+        </div>
+        <div class="toolbar">
+          <label class="switch-label"><input id="roomEditToggle" type="checkbox" checked /> Edit layout</label>
+          <button id="resetRoomLayout" class="secondary">Auto-arrange</button>
+        </div>
+      </div>
+      <div class="room-shell">
+        <div id="roomMap" class="room-map" aria-label="Room floor plan"></div>
+        <aside id="roomInspector" class="inspector">
+          <h3>Room</h3>
+          <p class="muted">Select a bookcase to see its shelves and movies.</p>
+        </aside>
+      </div>
+    </section>
+
+    <section id="view-storage" class="view">
+      <div class="section-heading">
+        <div>
+          <h2>Cases & Shelves</h2>
+          <p class="muted">Define the physical storage that appears in movie location selectors and the room map.</p>
+        </div>
+        <button id="addCaseBtn" class="primary">+ Add bookcase</button>
+      </div>
+      <div id="caseList" class="case-list"></div>
+      <div id="caseEmpty" class="empty-state hidden">
+        <h3>No bookcases yet</h3>
+        <p>Add a case, then assign movies to a shelf and position.</p>
+      </div>
+    </section>
+
+    <section id="view-settings" class="view">
+      <div class="settings-grid">
+        <div class="panel">
+          <h2>Movie database</h2>
+          <p>This app uses TMDB for search metadata and poster artwork. Your token is saved only in this browser.</p>
+          <label>TMDB API Read Access Token
+            <textarea id="tmdbToken" rows="4" placeholder="Paste your TMDB API Read Access Token"></textarea>
+          </label>
+          <div class="toolbar">
+            <button id="saveTokenBtn" class="primary">Save token</button>
+            <button id="testTokenBtn" class="secondary">Test connection</button>
+          </div>
+          <p id="tokenStatus" class="status muted"></p>
+        </div>
+
+        <div class="panel">
+          <h2>Portable local save</h2>
+          <p>Your catalog is stored locally in IndexedDB. Export a JSON backup to move the collection from Windows to Mac (or between browsers).</p>
+          <div class="toolbar wrap">
+            <button id="exportBtn" class="primary">Export backup</button>
+            <label class="file-button secondary">Import backup<input id="importInput" type="file" accept="application/json,.json" hidden /></label>
+          </div>
+          <p id="backupStatus" class="status muted"></p>
+        </div>
+
+        <div class="panel update-panel">
+          <div class="update-panel-heading">
+            <div>
+              <h2>Application updates</h2>
+              <p class="muted">The desktop launcher checks for updates automatically whenever MovieCatalog opens. You can also check manually here.</p>
+            </div>
+            <span id="installedVersionBadge" class="version-badge">v—</span>
+          </div>
+          <div class="update-version-grid">
+            <div><span>Installed</span><strong id="installedVersion">—</strong></div>
+            <div><span>Latest on GitHub</span><strong id="latestVersion">Not checked</strong></div>
+          </div>
+          <div class="toolbar wrap">
+            <button id="checkUpdateBtn" class="primary" type="button">Check for updates</button>
+            <a id="downloadLatestBtn" class="button-link secondary hidden" href="https://github.com/TIDWELB/MovieCatalog/archive/refs/heads/main.zip">Download latest ZIP</a>
+          </div>
+          <p id="updateStatus" class="status muted">Updates replace only the application files. Your movies, shelves, room layout, and TMDB token remain in this browser's IndexedDB storage.</p>
+          <div id="updateInstructions" class="update-instructions hidden">
+            <strong id="updateHeadline">Update available</strong>
+            <p id="launcherInstruction">Close this browser window and reopen MovieCatalog using the launcher.</p>
+            <p class="muted">Launcher: <code id="launcherName">MovieCatalog launcher</code></p>
+            <p id="updatePlatformNote" class="muted"></p>
+          </div>
+        </div>
+
+        <div class="panel danger-panel">
+          <h2>Local data</h2>
+          <p>Erase the catalog, bookcases and room layout from this browser. This cannot be undone unless you exported a backup.</p>
+          <button id="eraseBtn" class="danger">Erase all local data</button>
+        </div>
+
+        <div class="panel attribution">
+          <h2>Data source</h2>
+          <img class="tmdb-logo" src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_square_2-d537fb228cf3ded904ef09b136fe3fec72548ebc1fea3fbbd1ad9e36364db38b.svg" alt="TMDB logo" />
+          <p>This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
+          <p class="muted">Movie metadata and poster images are retrieved from TMDB when you search. Your ownership and location data remain local.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+
+  <dialog id="manualMovieDialog" class="dialog">
+    <form method="dialog" id="manualMovieForm">
+      <div class="dialog-header">
+        <div>
+          <h2>Add movie manually</h2>
+          <p class="muted">No TMDB token or internet connection required.</p>
+        </div>
+        <button id="manualCloseBtn" class="icon-button" type="button" aria-label="Close">×</button>
+      </div>
+      <div class="form-grid">
+        <label class="full">Title
+          <input id="manualTitle" type="text" required placeholder="Movie title" />
+        </label>
+        <label>Release date / year
+          <input id="manualReleaseDate" type="text" placeholder="e.g. 1999 or 1999-03-31" />
+        </label>
+        <label>Runtime (minutes)
+          <input id="manualRuntime" type="number" min="1" step="1" placeholder="136" />
+        </label>
+        <label class="full">Genres
+          <input id="manualGenres" type="text" placeholder="Action, Science Fiction" />
+        </label>
+        <label class="full">Poster image URL (optional)
+          <input id="manualPosterUrl" type="url" placeholder="https://…" />
+        </label>
+        <label class="full">Description / overview
+          <textarea id="manualOverview" rows="3" placeholder="Optional synopsis"></textarea>
+        </label>
+        <label>Format
+          <select id="manualFormat">
+            <option>4K UHD</option><option selected>Blu-ray</option><option>DVD</option><option>VHS</option><option>LaserDisc</option><option>Digital</option><option>Other</option>
+          </select>
+        </label>
+        <label>Edition / notes on copy
+          <input id="manualEdition" type="text" placeholder="Steelbook, Criterion…" />
+        </label>
+        <label>Bookcase
+          <select id="manualCase"></select>
+        </label>
+        <label>Shelf
+          <select id="manualShelf"></select>
+        </label>
+        <label>Position on shelf
+          <input id="manualPosition" type="text" placeholder="e.g. 12 or A-12" />
+        </label>
+        <label class="full">Personal notes
+          <textarea id="manualNotes" rows="3" placeholder="Condition, loaned out, replacement disc, etc."></textarea>
+        </label>
+      </div>
+      <div class="dialog-actions">
+        <div class="spacer"></div>
+        <button id="manualCancelBtn" type="button" class="secondary">Cancel</button>
+        <button id="saveManualMovieBtn" type="submit" value="default" class="primary">Add to catalog</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="movieDialog" class="dialog">
+    <form method="dialog" id="movieEditForm">
+      <div class="dialog-header">
+        <div>
+          <h2 id="editTitle">Movie</h2>
+          <p id="editMeta" class="muted"></p>
+        </div>
+        <button class="icon-button" value="cancel" aria-label="Close">×</button>
+      </div>
+      <div class="edit-layout">
+        <img id="editPoster" class="edit-poster" alt="" />
+        <div class="form-grid">
+          <label>Format
+            <select id="editFormat">
+              <option>4K UHD</option><option>Blu-ray</option><option>DVD</option><option>VHS</option><option>LaserDisc</option><option>Digital</option><option>Other</option>
+            </select>
+          </label>
+          <label>Edition / notes on copy
+            <input id="editEdition" type="text" placeholder="Steelbook, Criterion, Collector's Edition…" />
+          </label>
+          <label>Bookcase
+            <select id="editCase"></select>
+          </label>
+          <label>Shelf
+            <select id="editShelf"></select>
+          </label>
+          <label>Position on shelf
+            <input id="editPosition" type="text" placeholder="e.g. 12 or A-12" />
+          </label>
+          <label class="full">Personal notes
+            <textarea id="editNotes" rows="4" placeholder="Condition, loaned to someone, replacement disc, etc."></textarea>
+          </label>
+        </div>
+      </div>
+      <div class="dialog-actions">
+        <button id="deleteMovieBtn" type="button" class="danger ghost-danger">Delete from catalog</button>
+        <div class="spacer"></div>
+        <button value="cancel" class="secondary">Cancel</button>
+        <button id="saveMovieBtn" value="default" class="primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="caseDialog" class="dialog small-dialog">
+    <form method="dialog" id="caseForm">
+      <div class="dialog-header">
+        <h2 id="caseDialogTitle">Bookcase</h2>
+        <button class="icon-button" value="cancel" aria-label="Close">×</button>
+      </div>
+      <div class="form-grid one-col">
+        <label>Name<input id="caseName" required placeholder="North Wall Case" /></label>
+        <label>Number of shelves<input id="caseShelves" type="number" min="1" max="20" value="5" required /></label>
+        <label>Map width<input id="caseWidth" type="number" min="6" max="45" value="18" required /></label>
+        <label>Map height<input id="caseHeight" type="number" min="8" max="80" value="42" required /></label>
+      </div>
+      <div class="dialog-actions">
+        <button id="deleteCaseBtn" type="button" class="danger ghost-danger hidden">Delete case</button>
+        <div class="spacer"></div>
+        <button value="cancel" class="secondary">Cancel</button>
+        <button id="saveCaseBtn" value="default" class="primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+
+  <dialog id="shelfDialog" class="dialog shelf-dialog">
+    <div class="dialog-header">
+      <div>
+        <h2 id="shelfDialogTitle">Virtual Shelf</h2>
+        <p id="shelfDialogMeta" class="muted"></p>
+      </div>
+      <button id="shelfDialogClose" class="icon-button" type="button" aria-label="Close virtual shelf">×</button>
+    </div>
+    <div class="virtual-shelf-help muted">Movies are shown left-to-right in physical position order. Select a cover to edit or relocate it.</div>
+    <div id="virtualShelf" class="virtual-shelf"></div>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="version.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

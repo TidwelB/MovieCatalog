@@ -1,0 +1,160 @@
+#!/bin/bash
+set -u
+
+REPO_OWNER="TIDWELB"
+REPO_NAME="MovieCatalog"
+BRANCH="main"
+APP_SUPPORT="$HOME/Library/Application Support/MovieCatalog"
+BACKUP_ROOT="$APP_SUPPORT/.program-backups"
+LOG_DIR="$HOME/Library/Logs"
+LOG_FILE="$LOG_DIR/MovieCatalog.log"
+BUNDLE_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+BOOTSTRAP_DIR="$BUNDLE_DIR/Contents/Resources/bootstrap"
+
+mkdir -p "$APP_SUPPORT" "$BACKUP_ROOT" "$LOG_DIR"
+
+log() {
+  printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$LOG_FILE"
+}
+
+show_error() {
+  local message="$1"
+  log "ERROR: $message"
+  /usr/bin/osascript -e 'display dialog "MovieCatalog could not start.\n\n'"${message//\"/\\\"}"'" buttons {"OK"} default button "OK" with icon stop' >/dev/null 2>&1 || true
+}
+
+read_version() {
+  local file="$1"
+  if [ ! -f "$file" ]; then
+    printf '0.0.0'
+    return
+  fi
+  /usr/bin/sed -nE "s/.*MOVIE_CATALOG_VERSION[[:space:]]*=[[:space:]]*['\"]([^'\"]+)['\"].*/\1/p" "$file" | /usr/bin/head -n 1
+}
+
+version_gt() {
+  /usr/bin/awk -v A="$1" -v B="$2" 'BEGIN {
+    split(A,a,"."); split(B,b,".");
+    for (i=1; i<=3; i++) {
+      ai=(a[i]+0); bi=(b[i]+0);
+      if (ai > bi) exit 0;
+      if (ai < bi) exit 1;
+    }
+    exit 1;
+  }'
+}
+
+copy_runtime() {
+  local source="$1"
+  local destination="$2"
+  local item base
+  mkdir -p "$destination" || return 1
+  for item in "$source"/*; do
+    [ -e "$item" ] || continue
+    base="$(basename "$item")"
+    case "$base" in
+      .git|.github|.gitignore|.moviecatalog-update-backups|MovieCatalog.app|README.md|"Launch MovieCatalog.command"|"Update MovieCatalog.command"|"Launch MovieCatalog.bat"|"Update MovieCatalog.bat"|start-mac.command|start-windows.bat|update-windows.ps1|launch-windows.ps1|movie-room-backup-*.json|*.zip)
+        continue
+        ;;
+    esac
+    /usr/bin/ditto "$item" "$destination/$base" || return 1
+  done
+}
+
+seed_bootstrap_if_needed() {
+  local installed bundled
+  bundled="$(read_version "$BOOTSTRAP_DIR/version.js")"
+  installed="$(read_version "$APP_SUPPORT/version.js")"
+  if [ ! -f "$APP_SUPPORT/index.html" ] || version_gt "$bundled" "$installed"; then
+    log "Seeding bundled MovieCatalog $bundled into Application Support (installed: $installed)."
+    copy_runtime "$BOOTSTRAP_DIR" "$APP_SUPPORT" || return 1
+  fi
+}
+
+open_catalog() {
+  if [ ! -f "$APP_SUPPORT/index.html" ]; then
+    show_error "The local MovieCatalog files are missing."
+    exit 1
+  fi
+  log "Opening $APP_SUPPORT/index.html"
+  /usr/bin/open "$APP_SUPPORT/index.html"
+  exit 0
+}
+
+update_from_github() {
+  local ref_json commit_sha latest_version current_version temp_root archive extract source backup_dir
+  ref_json="$(/usr/bin/curl -fsSL --connect-timeout 8 --max-time 15 -H 'Accept: application/vnd.github+json' "https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/git/ref/heads/${BRANCH}" 2>/dev/null)" || return 1
+  commit_sha="$(printf '%s\n' "$ref_json" | /usr/bin/sed -nE 's/.*"sha"[[:space:]]*:[[:space:]]*"([0-9a-f]+)".*/\1/p' | /usr/bin/head -n 1)"
+  [ -n "$commit_sha" ] || return 1
+
+  latest_version="$(/usr/bin/curl -fsSL --connect-timeout 8 --max-time 15 "https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${commit_sha}/version.js" 2>/dev/null | /usr/bin/sed -nE "s/.*MOVIE_CATALOG_VERSION[[:space:]]*=[[:space:]]*['\"]([^'\"]+)['\"].*/\1/p" | /usr/bin/head -n 1)" || return 1
+  [ -n "$latest_version" ] || return 1
+
+  current_version="$(read_version "$APP_SUPPORT/version.js")"
+  log "GitHub commit $commit_sha reports v$latest_version; local runtime is v$current_version."
+
+  if ! version_gt "$latest_version" "$current_version"; then
+    return 0
+  fi
+
+  temp_root="$(/usr/bin/mktemp -d -t MovieCatalogLaunch.XXXXXX)" || return 1
+  archive="$temp_root/MovieCatalog.zip"
+  extract="$temp_root/extract"
+  mkdir -p "$extract"
+
+  if ! /usr/bin/curl -fL --retry 2 --connect-timeout 10 --max-time 60 "https://github.com/${REPO_OWNER}/${REPO_NAME}/archive/${commit_sha}.zip" -o "$archive" >/dev/null 2>&1; then
+    rm -rf "$temp_root"
+    return 1
+  fi
+  if ! /usr/bin/unzip -q "$archive" -d "$extract"; then
+    rm -rf "$temp_root"
+    return 1
+  fi
+
+  source="$(/usr/bin/find "$extract" -mindepth 1 -maxdepth 1 -type d | /usr/bin/head -n 1)"
+  if [ -z "$source" ]; then
+    rm -rf "$temp_root"
+    return 1
+  fi
+
+  if [ "$(read_version "$source/version.js")" != "$latest_version" ]; then
+    log "Downloaded archive version did not match expected v$latest_version."
+    rm -rf "$temp_root"
+    return 1
+  fi
+
+  backup_dir="$BACKUP_ROOT/$(date +%Y%m%d-%H%M%S)-v${current_version}"
+  mkdir -p "$backup_dir"
+  if [ -f "$APP_SUPPORT/index.html" ]; then
+    copy_runtime "$APP_SUPPORT" "$backup_dir" || true
+  fi
+
+  log "Installing MovieCatalog v$latest_version."
+  if ! copy_runtime "$source" "$APP_SUPPORT"; then
+    log "Install failed; attempting rollback from $backup_dir."
+    if [ -f "$backup_dir/index.html" ]; then
+      copy_runtime "$backup_dir" "$APP_SUPPORT" || true
+    fi
+    rm -rf "$temp_root"
+    return 1
+  fi
+
+  rm -rf "$temp_root"
+  log "MovieCatalog updated successfully to v$latest_version."
+  /usr/bin/osascript -e 'display notification "Updated to v'"$latest_version"'" with title "MovieCatalog"' >/dev/null 2>&1 || true
+  return 0
+}
+
+log "Launcher started."
+if ! seed_bootstrap_if_needed; then
+  show_error "The bundled application files could not be prepared."
+  exit 1
+fi
+
+# Updating is best-effort. If GitHub or the internet is unavailable, the last
+# installed copy still opens immediately.
+if ! update_from_github; then
+  log "Update check failed or was unavailable; opening the installed copy."
+fi
+
+open_catalog
