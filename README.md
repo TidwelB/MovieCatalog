@@ -1,4 +1,4 @@
-# My Movie Room — v1.4
+# My Movie Room — v1.5
 
 A local-first web movie catalog for tracking what you own and exactly where each physical copy is stored.
 
@@ -9,29 +9,101 @@ A local-first web movie catalog for tracking what you own and exactly where each
 - Track physical format, edition, personal notes, bookcase, shelf, and shelf position.
 - Create any number of physical bookcases with configurable shelf counts.
 - Browse compact ordered poster strips in **Cases & Shelves** and in the Room Map inspector.
-- Open a **large virtual shelf** that shows every movie left-to-right in physical position order.
+- Open a large virtual shelf showing every movie left-to-right in physical position order.
 - See miniature movie-cover previews directly inside the draggable bookcases on the Room Map.
 - Drag bookcases around a simple room map; hover for movie counts and click to inspect shelf contents.
 - Local-first storage using IndexedDB. No application server or cloud database is required.
-- Export/import a single JSON backup to transfer your catalog between Windows, macOS, browsers, or computers.
-- No JavaScript frameworks and no package installation.
+- Export/import a JSON backup to transfer your catalog between Windows, macOS, browsers, or computers.
+- Check GitHub for application updates from inside **Settings**.
+- Install updates using a one-click-ish local updater on Windows or macOS; Git and Python are not required on the family member's computer.
 
-## v1.4 changes
+## v1.5 changes — updater system
 
-- Reworked the large virtual-shelf cards so the movie spine is visually separated from its text label.
-- Movie titles now sit underneath each spine in a wider fixed label area instead of competing with the image for horizontal space.
-- Titles can use up to three wrapped lines and retain the full title as a hover tooltip.
-- Position labels are now compact badges beneath each spine.
-- The shelf keeps its left-to-right physical-position ordering and horizontal-scroll behavior.
+MovieCatalog now tracks its application version in `version.js` and can compare that version to the copy in the public GitHub repository:
 
-## v1.3 changes
+`https://github.com/TIDWELB/MovieCatalog`
 
-- Added **View shelf** buttons to Cases & Shelves and the Room Map inspector.
-- The new large virtual shelf displays all titles in physical shelf order with larger covers, position labels, titles, and horizontal scrolling.
-- Selecting a cover from the virtual shelf opens that movie's editor/location details.
-- Draggable Room Map bookcases now display small per-shelf poster previews directly on the case itself.
-- Room-map poster previews do not intercept pointer input, so cases remain easy to drag and select.
-- Windows/macOS launcher scripts now fall back to opening `index.html` directly when Python is not installed.
+Open **Settings → Application updates → Check for updates**.
+
+If a newer build is available, MovieCatalog tells the user which local updater to run:
+
+- Windows: `Update MovieCatalog.bat`
+- macOS: `Update MovieCatalog.command`
+
+The updater downloads the newest `main` branch ZIP directly from GitHub, makes a safety copy of the current program files, replaces the application files, and reopens `index.html`.
+
+The updater does **not** replace the user's live catalog. Movies, bookcases, room layout, and the TMDB token remain in that browser's IndexedDB storage.
+
+### Important limitation
+
+The browser cannot securely launch an arbitrary local `.bat` or `.command` file by itself. The simplest safe flow is therefore:
+
+1. Open **Settings**.
+2. Click **Check for updates**.
+3. If an update is available, close MovieCatalog.
+4. Double-click the updater in the MovieCatalog folder.
+5. MovieCatalog reopens after the update finishes.
+
+No terminal commands are required during normal updating.
+
+## Publishing a new build
+
+This updater follows the `main` branch directly, so a release does not need to be created in GitHub Releases.
+
+Before pushing a build, change this line in `version.js`:
+
+```js
+window.MOVIE_CATALOG_VERSION = '1.6.0';
+```
+
+Use a higher version number each time you want family members to see an update.
+
+Then commit and push normally:
+
+```powershell
+git add .
+git update-index --chmod=+x "Update MovieCatalog.command" start-mac.command
+git commit -m "Release MovieCatalog v1.6.0"
+git push
+```
+
+The `git update-index` line records the executable bit for the two macOS `.command` scripts. This is especially important when committing from Windows/NTFS.
+
+Once `main` contains the new `version.js`, the Settings checker and both updater scripts will see the new build.
+
+## First-time setup for a family member
+
+Copy or download the entire MovieCatalog folder onto the computer.
+
+### Windows
+
+Open `index.html` normally. For future updates, double-click `Update MovieCatalog.bat` when Settings reports a new version.
+
+The Windows updater uses built-in PowerShell. It does not require Git or Python.
+
+### macOS
+
+Open `index.html` normally. For future updates, double-click `Update MovieCatalog.command` when Settings reports a new version.
+
+On the first launch, macOS may require **Control-click → Open** because the updater is an unsigned local script. After the one-time approval, future launches are normally straightforward.
+
+If macOS reports that the updater is not executable, make sure the executable bit was committed to Git with:
+
+```powershell
+git update-index --chmod=+x "Update MovieCatalog.command" start-mac.command
+```
+
+and then commit/push that change.
+
+## Safety copies during updates
+
+The updater creates program-file safety copies under:
+
+`.moviecatalog-update-backups/`
+
+That folder is ignored by Git via `.gitignore`.
+
+These backups are separate from the user's movie database. They exist only to restore application files if an update copy fails.
 
 ## Starting the app — Python is optional
 
@@ -39,75 +111,63 @@ A local-first web movie catalog for tracking what you own and exactly where each
 
 Open `index.html` in a current Chrome, Edge, Firefox, or Safari browser.
 
-If direct launch is working for TMDB search and local saves on your machine, **you do not need Python**.
-
-The included launcher scripts use Python only as an optional tiny local web server. If Python is unavailable, the updated launchers simply open `index.html` directly.
+If direct launch is working for TMDB search and local saves on the machine, Python is not needed.
 
 ### Windows
 
-- Double-click `index.html`, **or**
+- Double-click `index.html`, or
 - Double-click `start-windows.bat`.
 
 ### macOS
 
-- Double-click `index.html`, **or**
-- Run `start-mac.command` (macOS may require Control-click → Open the first time because it is an unsigned local script).
+- Double-click `index.html`, or
+- Run `start-mac.command`.
 
-If `index.html` works directly, there is no reason to install Python just for this catalog.
+The launcher scripts use Python only as an optional local web server. If Python is unavailable, they open `index.html` directly.
 
 ## Where the data actually lives
 
-The JSON backup is **not** the active database.
+The JSON backup is not the active database.
 
 The live catalog is stored by the browser in an IndexedDB database named:
 
 `myMovieRoomDB`
 
-That database currently contains three object stores:
+That database contains:
 
 - `movies` — movie metadata, format, edition, notes, case/shelf/position, etc.
 - `cases` — bookcase definitions and Room Map coordinates/sizes.
-- `settings` — currently including the saved TMDB API Read Access Token.
+- `settings` — including the saved TMDB API Read Access Token.
 
-The browser writes this data into its own private profile/storage area on the computer. The files are managed by the browser; they are not saved next to `index.html` and you normally should not edit them manually.
+The browser writes this data into its own profile/storage area. It is not stored next to `index.html`.
 
 ### What this means
 
-- Closing the browser does **not** erase the collection.
-- Restarting Windows/macOS does **not** erase the collection.
-- The JSON export is only a backup/transfer file; it does not need to remain present for the app to work.
-- Deleting the JSON backup does **not** delete the live catalog.
-- Deleting/clearing the browser's site data may delete the catalog.
-- Chrome, Edge, Firefox, and Safari each have separate browser storage.
-- A Windows browser's IndexedDB does not automatically move to a Mac just because you copy the app folder.
+- Updating `index.html`, `app.js`, `styles.css`, and the other program files does not replace the catalog.
+- Closing the browser does not erase the collection.
+- Restarting Windows/macOS does not erase the collection.
+- The JSON export is only a backup/transfer file.
+- Clearing browser site data may delete the collection.
+- Different browsers have separate IndexedDB storage.
+- Copying the application folder to another computer does not copy IndexedDB; use Export/Import for that.
 
-For that reason, use **Settings → Export backup** before changing computers, browser profiles, or launch methods.
+## Moving a collection to another computer
 
-## Important note about opening `index.html` directly
-
-Directly opening the app uses a `file://` URL. Browser handling of storage/origins for local files is implementation-dependent, so behavior can differ between browsers. For consistency, keep using the same browser and the same copy/path of the app when possible.
-
-If direct launch works reliably for you, it is perfectly reasonable to keep using it. A `localhost` server is mainly a fallback if a browser later blocks an API/network feature or handles local-file storage differently.
-
-## Moving from Windows to Mac
-
-1. On Windows, open **Settings → Export backup**.
-2. Copy both the app folder and the downloaded JSON backup to the Mac.
-3. Open `index.html` on the Mac in your preferred browser.
-4. Open **Settings → Import backup** and choose the JSON file.
-5. Continue using that same browser/launch method on the Mac.
-
-The backup contains your catalog, bookcases, room-map positions, and TMDB token.
+1. Open **Settings → Export backup** on the old computer.
+2. Copy the MovieCatalog folder and the downloaded backup JSON to the new computer.
+3. Open `index.html` on the new computer using the preferred browser.
+4. Open **Settings → Import backup** and select the JSON file.
+5. Continue using that browser for the catalog.
 
 ## TMDB setup
 
 1. Create/log in to a TMDB account.
-2. Request API access in your TMDB account settings.
+2. Request API access in TMDB account settings.
 3. Copy the **API Read Access Token**.
-4. Open **Settings** in the app and paste the token.
+4. Open **Settings** in MovieCatalog and paste it.
 5. Click **Test connection**.
 
-The token is stored in the same local IndexedDB database as the rest of the catalog.
+The token is stored only in that browser's local IndexedDB database unless the user explicitly exports a MovieCatalog backup.
 
 ## Data model
 

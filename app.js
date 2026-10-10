@@ -8,6 +8,11 @@
   const SETTINGS = 'settings';
   const TMDB_API = 'https://api.themoviedb.org/3';
   const TMDB_IMAGE = 'https://image.tmdb.org/t/p/w500';
+  const APP_VERSION = window.MOVIE_CATALOG_VERSION || '1.5.0';
+  const UPDATE_REPO = 'TIDWELB/MovieCatalog';
+  const UPDATE_BRANCH = 'main';
+  const UPDATE_VERSION_URL = `https://raw.githubusercontent.com/${UPDATE_REPO}/${UPDATE_BRANCH}/version.js`;
+  const UPDATE_ARCHIVE_URL = `https://github.com/${UPDATE_REPO}/archive/refs/heads/${UPDATE_BRANCH}.zip`;
 
   let db;
   let movies = [];
@@ -670,6 +675,101 @@
     renderRoom(); toast('Room layout auto-arranged');
   }
 
+  function parseVersionParts(version) {
+    return String(version || '').replace(/^v/i, '').split('.').map(part => {
+      const match = String(part).match(/^\d+/);
+      return match ? Number(match[0]) : 0;
+    });
+  }
+
+  function compareVersions(a, b) {
+    const av = parseVersionParts(a), bv = parseVersionParts(b);
+    const length = Math.max(av.length, bv.length);
+    for (let i = 0; i < length; i++) {
+      const left = av[i] || 0, right = bv[i] || 0;
+      if (left > right) return 1;
+      if (left < right) return -1;
+    }
+    return 0;
+  }
+
+  function detectedUpdater() {
+    const ua = navigator.userAgent || '';
+    if (/Macintosh|Mac OS X/i.test(ua)) {
+      return {
+        file: 'Update MovieCatalog.command',
+        note: 'On macOS, the updater opens in Terminal. The first time, macOS may require Control-click → Open if it warns about an unsigned local script.'
+      };
+    }
+    if (/Windows/i.test(ua)) {
+      return {
+        file: 'Update MovieCatalog.bat',
+        note: 'On Windows, the updater opens a small command window and uses built-in PowerShell. Git and Python are not required.'
+      };
+    }
+    return {
+      file: 'Update MovieCatalog.command (macOS) or Update MovieCatalog.bat (Windows)',
+      note: 'Use the updater that matches the computer running MovieCatalog.'
+    };
+  }
+
+  function initializeUpdatePanel() {
+    const updater = detectedUpdater();
+    $('installedVersion').textContent = `v${APP_VERSION}`;
+    $('installedVersionBadge').textContent = `v${APP_VERSION}`;
+    $('updaterFileName').textContent = updater.file;
+    $('updatePlatformNote').textContent = updater.note;
+    $('downloadLatestBtn').href = UPDATE_ARCHIVE_URL;
+  }
+
+  async function checkForUpdates() {
+    const button = $('checkUpdateBtn');
+    const status = $('updateStatus');
+    const instructions = $('updateInstructions');
+    const latestEl = $('latestVersion');
+    button.disabled = true;
+    button.textContent = 'Checking…';
+    instructions.classList.add('hidden');
+    $('downloadLatestBtn').classList.add('hidden');
+    status.className = 'status muted';
+    status.textContent = 'Checking GitHub…';
+
+    try {
+      const separator = UPDATE_VERSION_URL.includes('?') ? '&' : '?';
+      const response = await fetch(`${UPDATE_VERSION_URL}${separator}t=${Date.now()}`, { cache:'no-store' });
+      if (!response.ok) throw new Error(`GitHub returned ${response.status}.`);
+      const text = await response.text();
+      const match = text.match(/MOVIE_CATALOG_VERSION\s*=\s*['"]([^'"]+)['"]/);
+      if (!match) throw new Error('The GitHub build does not contain a readable version.js file.');
+
+      const latest = match[1];
+      latestEl.textContent = `v${latest}`;
+      const comparison = compareVersions(latest, APP_VERSION);
+
+      if (comparison > 0) {
+        status.className = 'status update-available';
+        status.textContent = `MovieCatalog v${latest} is available.`;
+        $('updateHeadline').textContent = `Update available: v${APP_VERSION} → v${latest}`;
+        instructions.classList.remove('hidden');
+        $('downloadLatestBtn').classList.remove('hidden');
+      } else if (comparison === 0) {
+        status.className = 'status update-current';
+        status.textContent = `You're up to date. MovieCatalog v${APP_VERSION} is the current GitHub build.`;
+      } else {
+        status.className = 'status muted';
+        status.textContent = `This computer is running v${APP_VERSION}, which is newer than GitHub's v${latest}.`;
+      }
+    } catch (err) {
+      latestEl.textContent = 'Check failed';
+      status.className = 'status update-error';
+      status.textContent = `Could not check for updates: ${err.message}`;
+      $('downloadLatestBtn').classList.remove('hidden');
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Check for updates';
+    }
+  }
+
   async function exportBackup() {
     const payload = { schemaVersion:1, exportedAt:new Date().toISOString(), movies, cases, settings:{ tmdbToken: await getSetting('tmdbToken','') } };
     const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
@@ -757,6 +857,7 @@
     $('exportBtn').addEventListener('click', exportBackup);
     $('importInput').addEventListener('change', e => { if(e.target.files[0]) importBackup(e.target.files[0]); e.target.value=''; });
     $('eraseBtn').addEventListener('click', eraseAll);
+    $('checkUpdateBtn').addEventListener('click', checkForUpdates);
     $('shelfDialogClose').addEventListener('click', () => $('shelfDialog').close());
   }
 
@@ -769,6 +870,7 @@
     bindEvents();
     await reloadState();
     $('tmdbToken').value = await getSetting('tmdbToken','');
+    initializeUpdatePanel();
   }
 
   init().catch(err => { console.error(err); alert(`Movie Room could not start: ${err.message}`); });

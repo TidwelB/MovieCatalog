@@ -1,0 +1,4 @@
+.moviecatalog-update-backups/
+movie-room-backup-*.json
+*.zip
+.DS_Store

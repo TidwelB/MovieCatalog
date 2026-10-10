@@ -129,6 +129,34 @@
           <p id="backupStatus" class="status muted"></p>
         </div>
 
+        <div class="panel update-panel">
+          <div class="update-panel-heading">
+            <div>
+              <h2>Application updates</h2>
+              <p class="muted">Check the public GitHub repository for a newer MovieCatalog build.</p>
+            </div>
+            <span id="installedVersionBadge" class="version-badge">v—</span>
+          </div>
+          <div class="update-version-grid">
+            <div><span>Installed</span><strong id="installedVersion">—</strong></div>
+            <div><span>Latest on GitHub</span><strong id="latestVersion">Not checked</strong></div>
+          </div>
+          <div class="toolbar wrap">
+            <button id="checkUpdateBtn" class="primary" type="button">Check for updates</button>
+            <a id="downloadLatestBtn" class="button-link secondary hidden" href="https://github.com/TIDWELB/MovieCatalog/archive/refs/heads/main.zip">Download latest ZIP</a>
+          </div>
+          <p id="updateStatus" class="status muted">Updates replace only the application files. Your movies, shelves, room layout, and TMDB token remain in this browser's IndexedDB storage.</p>
+          <div id="updateInstructions" class="update-instructions hidden">
+            <strong id="updateHeadline">Update available</strong>
+            <ol>
+              <li>Close this MovieCatalog browser tab/window.</li>
+              <li>In the MovieCatalog folder, double-click <code id="updaterFileName">Update MovieCatalog</code>.</li>
+              <li>The updater downloads the newest <code>main</code> build, installs it, and reopens MovieCatalog.</li>
+            </ol>
+            <p id="updatePlatformNote" class="muted"></p>
+          </div>
+        </div>
+
         <div class="panel danger-panel">
           <h2>Local data</h2>
           <p>Erase the catalog, bookcases and room layout from this browser. This cannot be undone unless you exported a backup.</p>
@@ -281,6 +309,7 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="version.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

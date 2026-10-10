@@ -194,3 +194,28 @@ button:hover,.file-button:hover { filter:brightness(1.12); }
   .virtual-movie-title { font-size:.78rem; }
   .virtual-shelf-empty { min-width:300px; }
 }
+
+
+/* v1.5 - application updater */
+.update-panel { position:relative; overflow:hidden; }
+.update-panel::after { content:""; position:absolute; inset:auto -44px -70px auto; width:180px; height:180px; border-radius:50%; background:radial-gradient(circle,rgba(73,187,130,.11),transparent 68%); pointer-events:none; }
+.update-panel-heading { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; }
+.update-panel-heading h2 { margin-bottom:5px; }
+.version-badge { flex:0 0 auto; padding:5px 9px; border:1px solid var(--border); border-radius:999px; background:var(--panel-2); color:var(--muted); font-size:.76rem; font-weight:800; }
+.update-version-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:16px 0; }
+.update-version-grid > div { padding:11px 12px; border:1px solid var(--border); border-radius:9px; background:rgba(255,255,255,.018); display:flex; flex-direction:column; gap:3px; }
+.update-version-grid span { color:var(--muted); font-size:.75rem; text-transform:uppercase; letter-spacing:.04em; }
+.update-version-grid strong { font-size:.96rem; }
+.button-link { border:1px solid var(--border); border-radius:9px; padding:10px 14px; color:var(--text); background:var(--panel-2); display:inline-flex; align-items:center; justify-content:center; text-decoration:none; }
+.button-link:hover { filter:brightness(1.12); }
+.update-available { color:#ffd58b; }
+.update-current { color:#88dfb2; }
+.update-error { color:#ff9d9d; }
+.update-instructions { margin-top:14px; padding:13px 14px; border:1px solid rgba(73,187,130,.34); border-radius:10px; background:rgba(73,187,130,.07); }
+.update-instructions > strong { display:block; margin-bottom:8px; }
+.update-instructions ol { margin:0 0 8px 21px; padding:0; }
+.update-instructions li { margin:5px 0; line-height:1.45; }
+.update-instructions code { padding:2px 5px; border:1px solid var(--border); border-radius:5px; background:#0f1319; color:var(--text); }
+@media (max-width:620px) {
+  .update-version-grid { grid-template-columns:1fr; }
+}
