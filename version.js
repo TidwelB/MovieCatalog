@@ -1,1 +1,1 @@
-window.MOVIE_CATALOG_VERSION = '1.5.0';
+window.MOVIE_CATALOG_VERSION = '1.6.0';
